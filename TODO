@@ -1,0 +1,17 @@
+What needs to be added:
+
+	* make install
+	* GitHub repository
+	* Delete key support
+	* CTRL support (CTRL+arrow keys and CTRL+Backspace)
+	* Whatever the place where the file and edit menus are
+	* Loading files
+	* Exporting Files
+	* Options menu
+	* Options for vim-like shortcuts
+	* --help output
+	* Add $CC option to Makefile
+	* Changing fonts
+	* Changing text size
+	* Adding find support (via grep maybe, or a cannabalized version of the one from busybox)
+
