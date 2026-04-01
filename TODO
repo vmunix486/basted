@@ -1,15 +1,15 @@
 What needs to be added:
 
 	* make install
-	* GitHub repository
+	* GitHub repository (DONE)
 	* Delete key support
 	* CTRL support (CTRL+arrow keys and CTRL+Backspace)
-	* Whatever the place where the file and edit menus are
-	* Loading files
-	* Exporting Files
+	* Whatever the place where the file and edit menus are (CANCELLED)
+	* Loading files (DONE)
+	* Exporting Files (DONE)
 	* Options menu
 	* Options for vim-like shortcuts
-	* --help output
+	* --help output (DONE)
 	* Add $CC option to Makefile
 	* Changing fonts
 	* Changing text size
