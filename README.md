@@ -1,6 +1,6 @@
 # BASTED
 
-This is BASTED 0.2. BASTED is actually an acronym for the BASic Text EDitor. The minimum requirements are:
+This is BASTED. BASTED is actually an acronym for the BASic Text EDitor. The minimum requirements are:
 
  - UNIX or UNIX-like operating system (such as Linux or NetBSD)
  - X11
