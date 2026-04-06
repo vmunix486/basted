@@ -1,5 +1,7 @@
 # BASTED
 
+![basted-linux-readme.png](https://github.com/vmunix486/basted/blob/b628c9d6a746fe728546c8e3864ec338adfbf465/basted-linux-readme.png)
+
 This is BASTED. BASTED is actually an acronym for the BASic Text EDitor. The minimum requirements are:
 
  - UNIX or UNIX-like operating system (such as Linux or NetBSD)
