@@ -9,6 +9,13 @@
 #define MAX_LINES 256
 #define MAX_COLS  256
 
+/* Default Window Size */
+int win_width = 640;
+int win_height = 480;
+
+/* Scroll offset */
+int scroll_y = 0;
+
 /* The file name storage so it can be stored */
 char current_file[256] = {0};
 /* The tingy that does the buffer... Buffet. I'm hungry. */
@@ -30,25 +37,83 @@ int line_height;
 /* Draw all 500 quadrillion pixels */
 void redraw() {
 	XClearWindow(dpy, win);
+	
+	XWindowAttributes attr;
+	XGetWindowAttributes(dpy, win, &attr);
+	win_width = attr.width;
+	win_height = attr.height;
+
+	/* Part that calculates the max amount of characters per line */
+	int max_cols;
+	/* cursor stuff */
+	int cursor_px = 10;
+	int cursor_py = 20;
+	int found_cursor = 0;
+
+	if (char_width <= 0) {
+		max_cols = 80; /* Just as a fallback if it explodes */
+	} else {
+		max_cols = (win_width - 20) / char_width;
+		/* if (max_cols < 10) max_cols = 10;  Temporary sanity check*/
+		if (max_cols < 1) max_cols = 1;
+	}
+	/* Fix possible edge case bug */
+	/* if (max_cols < 1) max_cols = 1; */
+
+	/* Debugging shart */
+	printf("win_width= %d char_width= %d\n max_cols= %d\n",
+		win_width, char_width, (win_width - 20) / char_width);
+
+
+	int y = 20 - scroll_y;
 
 	/* Draw the alphanumeric characters */
 	for (int i = 0; i < line_count; i++) {
-		XDrawString(dpy, win, gc,
-				10,
-				20 + i * line_height,
-				lines[i],
-				strlen(lines[i]));
+		char *line = lines[i];
+		int len = strlen(line);
+
+		int start = 0;
+
+		while (start < len) {
+			if (y > win_height - line_height) break;
+
+			int end = start + max_cols;
+
+			if (end >= len) {
+				XDrawString(dpy, win, gc, 10, y,
+						line + start,
+						len - start);
+				break;
+			}
+
+			int wrap = (end > len) ? end : len - 1;
+
+			/* Find the last space typed */
+			while (wrap > start && line[wrap] != ' ') {
+				wrap--;
+			}
+			
+			/* If no space found, then do a hard wrap */
+			if (wrap == start) {
+			    wrap = end;
+			}
+			
+			/* Draw segment */
+			XDrawString(dpy, win, gc, 10, y,
+					line + start,
+					wrap - start);
+			/* move start ofrwatd */
+			if (wrap < len && line[wrap] == ' ')
+				start = wrap + 1;
+			else
+				start = wrap;
+
+			y += line_height;
+		}
+
+		y += line_height;
 	}
 
-	/* Draw the cursor that can move and is a square and can eat letters and can make new letters */
-	int x = 10 + cx * char_width;
-	int y = 20 + cy * line_height;
-
-	XDrawLine(dpy, win, gc,	
-			x, 
-			y - font->ascent, 
-			x, 
-			y + font->descent);
 }
 
 /* Load the files so you can edit them */
@@ -132,7 +197,7 @@ void save_file() {
 int main(int argc, char *argv[]) {
 	if (argc > 1) {
 		if (strcmp(argv[1], "-h") == 0) {
-			printf("basted - the BASic Text EDitor version 0.2.\n");
+			printf("basted - the BASic Text EDitor version 0.3.\n");
 			printf("Usage: basted [file]\n");
 			return 0;
 		} else {
@@ -161,16 +226,16 @@ int main(int argc, char *argv[]) {
 	/* set the title of the window */
 
 	/* static title bar name */
-	/* XStoreName(dpy, win, "basted 0.2"); */
+	/* XStoreName(dpy, win, "basted 0.3"); */
 
 	/* dynamic title bar name */
 	void update_title() {
 		char title[512];
 
 		if (current_file[0] != '\0') {
-			snprintf(title, sizeof(title), "basted 0.2 - %s", current_file);
+			snprintf(title, sizeof(title), "basted 0.3 - %s", current_file);
 		} else {
-			snprintf(title, sizeof(title), "basted 0.2 - [No Name]");
+			snprintf(title, sizeof(title), "basted 0.3 - [I have no name and I must scream]");
 		}
 
 		XStoreName(dpy, win, title);
@@ -178,10 +243,16 @@ int main(int argc, char *argv[]) {
 
 	/* Select the events, or also known as inputs, or also known as 
 	 * k e y p r e s s */
-	XSelectInput(dpy, win, ExposureMask | KeyPressMask);
+	XSelectInput(dpy, win, ExposureMask | KeyPressMask | StructureNotifyMask);
 
 	/* Show the window so you can see it, and the note before is actually wrong but it's 10PM EST and I'm tired and lazy so I don't feel like changing it */
 	XMapWindow(dpy, win);
+	
+	XWindowAttributes attr;
+	XGetWindowAttributes(dpy, win, &attr);
+
+	win_width = attr.width;
+	win_height = attr.height;
 
 	/* Context the graphics so they have context and are graphiked */
 	gc = DefaultGC(dpy, screen);
@@ -191,6 +262,10 @@ int main(int argc, char *argv[]) {
 	 * 2. All the missing character boxes
 	 * 3. Compilation error */
 	font = XLoadQueryFont(dpy, "fixed");
+	if (!font) {
+		fprintf(stderr, "Failed to load font. Please install the fonts. I don't even know why I'm typing this right now because you should have fonts installed, and if you don't, then you can't read this anyways.\n");
+		exit(1);
+	}
 	XSetFont(dpy, gc, font->fid);
 
 	char_width = font->max_bounds.width;
@@ -211,6 +286,9 @@ int main(int argc, char *argv[]) {
 
 		/* Redraw the window when it is exposed like the Internet Anarchist */
 		if (ev.type == Expose) {
+			win_width = ev.xconfigure.width;
+			win_height = ev.xconfigure.height;
+
 			redraw();
 		}
 
@@ -252,10 +330,21 @@ int main(int argc, char *argv[]) {
 			}
 			else if (keysym == XK_Down && cy < line_count - 1) {
 				cy++;
+			
+			}
+			/* scrolling keys */
+			if (keysym == XK_Page_Down) {
+				scroll_y += line_height * 5;
+			}
+			else if (keysym == XK_Page_Up) {
+				scroll_y -= line_height * 5;
+				if (scroll_y < 0) scroll_y = 0;
 			}
 			else if (n > 0 && isprint((unsigned char)buf[0]) && cx < MAX_COLS -1) {
 				lines[cy][cx++] = buf[0];
 				lines[cy][cx] = '\0';
+				/* more scrolling stuff */
+				if (scroll_y < 0) scroll_y = 0;
 			}
 			/* I'm sorry but all the else if's remind me of Yandere Simulator :skull: */
 			

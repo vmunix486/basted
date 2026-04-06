@@ -1,6 +1,4 @@
-Updates from v0.1:
+Updates from v0.2:
 	
-	* Added dynamic titlebar support
-	* Added loading files
-	* Added saving files
-	* Added -h option
+	* Added word wrapping
+	* Added scrolling via Page Up and Page Down

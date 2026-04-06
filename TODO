@@ -14,4 +14,6 @@ What needs to be added:
 	* Changing fonts
 	* Changing text size
 	* Adding find support (via grep maybe, or a cannabalized version of the one from busybox)
-
+	* Adding Scrolling (DONE)
+	* Adding Word Wrapping (DONE)
+	* Adding Cursor
