@@ -6,7 +6,7 @@ This is BASTED. BASTED is actually an acronym for the BASic Text EDitor. The min
 
  - UNIX or UNIX-like operating system (such as Linux or NetBSD)
  - X11
- - C compiler
+ - C compiler that supports C99
  - (OPTIONAL) GNU make
 
 There are many ways to compile BASTED. The first and easiest way is with the ``make`` command. There are many ways to compile it with ``make``.
