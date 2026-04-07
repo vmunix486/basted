@@ -34,8 +34,10 @@ XFontStruct *font;
 int char_width;
 int line_height;
 
+int max_cols;
+
 /* Draw all 500 quadrillion pixels */
-void redraw() {
+void redraw(void) {
 	XClearWindow(dpy, win);
 	
 	XWindowAttributes attr;
@@ -44,8 +46,6 @@ void redraw() {
 	win_height = attr.height;
 
 	/* Part that calculates the max amount of characters per line */
-	int max_cols;
-	
 	if (char_width <= 0) {
 		max_cols = 80; /* Just as a fallback if it explodes */
 	} else {
@@ -53,8 +53,6 @@ void redraw() {
 		/* if (max_cols < 10) max_cols = 10;  Temporary sanity check*/
 		if (max_cols < 1) max_cols = 1;
 	}
-	/* Fix possible edge case bug */
-	/* if (max_cols < 1) max_cols = 1; */
 
 	/* Debugging shart */
 	/* printf("win_width= %d char_width= %d\n max_cols= %d\n",
@@ -146,9 +144,6 @@ void redraw() {
 
 /* Load the files so you can edit them */
 void load_file(const char *filename) {
-	/* FILE *f = fopen(filename, "r");
-	if (!f) return; */
-
 	/* Remember the file name, ALWAYS */
 	strncpy(current_file, filename, sizeof(current_file) - 1);
 	current_file[sizeof(current_file) - 1] = '\0';
@@ -169,8 +164,18 @@ void load_file(const char *filename) {
 
 	while (fgets(buffer, sizeof(buffer), f)) {
 		buffer[strcspn(buffer, "\n")] = '\0'; /* remove newlines */
+		int j = 0;
+		for (int i = 0; buffer[i] && j < MAX_COLS - 1; i++) {
+			if (buffer[i] == '\t') {
+				int spaces = 5;
+				for (int k = 0; k < spaces && j < MAX_COLS - 1; k++) {
+					lines[line_count][j++] = ' ';
+				}
+			} else {
+				lines[line_count][j++] = buffer[i];
+		}
+	}
 
-		strncpy(lines[line_count], buffer, MAX_COLS - 1);
 		lines[line_count][MAX_COLS - 1] = '\0';
 
 		line_count++;
@@ -185,7 +190,7 @@ void load_file(const char *filename) {
 }
 
 /* The part that saves the files */
-void save_file() {
+void save_file(void) {
 	/* If there is no file name specified, then ask the user where they want to dump the file. */
 	if (current_file[0] == '\0') {
 		printf("No filename specified!\n");
@@ -221,46 +226,6 @@ void save_file() {
 	fclose(f);
 }
 
-/* mouse click cursor move thing part 
- * EXPERIMENTAL 
-void handle_click(int mx, int my) {
-	int y = 20 - scroll_y;
-	for (int i = 0; i < line_count; i++) {
-		char *line = lines[i];
-		int len = strlen(line);
-		int start = 0;
-		while (start < len) {
-			int end = start + max_cols;
-			int segment_len;
-				if (end >= len) {
-					segment_len = len - start;
-				} else {
-					int wrap = end - 1;
-					while (wrap > start && line[wrap] != ' ')
-						wrap--;
-					if (wrap == start)
-						wrap = end;
-					segment_len = wrap - start;
-				}
-			 Check if the click is on a visual line, turned off, mouse does not work
-			if (my >= y - line_height && my <= y) {
-				int rel_x = (mx - 10) / char_width;
-				if (rel_x < 0) rel_x = 0;
-				if (rel_x > segment_len) rel_x = segment_len;
-				cx = start + rel_x;
-				cy = i;
-				return;
-			}
-			start += segment_len;
-			 skip the space after a long wrap
-			if (line[start] == ' ') start++;
-			y += line_height;
-		}
-		y += line_height;
-	} 
-} 
-*/
-
 /* ACTUAL PROGRAM HOLY <bleep> */
 int main(int argc, char *argv[]) {
 	if (argc > 1) {
@@ -292,18 +257,13 @@ int main(int argc, char *argv[]) {
 	);
 
 	/* set the title of the window */
-
-	/* static title bar name */
-	/* XStoreName(dpy, win, "basted"); */
-
-	/* dynamic title bar name */
-	void update_title() {
+	void update_title(void) {
 		char title[512];
 
 		if (current_file[0] != '\0') {
-			snprintf(title, sizeof(title), "basted 0.4 - %s", current_file);
+			snprintf(title, sizeof(title), "basted 0.5 - %s", current_file);
 		} else {
-			snprintf(title, sizeof(title), "basted 0.4 - I have no name and I must scream");
+			snprintf(title, sizeof(title), "basted 0.5");
 		}
 
 		XStoreName(dpy, win, title);
@@ -387,10 +347,11 @@ int main(int argc, char *argv[]) {
 				}
 				else {
 					if (cx > 0) {
+						int len = strlen(lines[cy]);
+						memmove(&lines[cy][cx - 1], &lines[cy][cx], len - cx + 1);
 						cx--;
-						lines[cy][cx] = '\0';
-					}
-				}
+					}	
+			}
 			}
 			else if (keysym == XK_Delete) {
 
@@ -458,7 +419,12 @@ int main(int argc, char *argv[]) {
 					lines[cy][cx] = '\0';
 				}
 			}
-			
+			else if (keysym == XK_Home) {
+				cx = 0;
+			}
+			else if (keysym == XK_End) {
+				cx = strlen(lines[cy]);
+			}	
 			
 			/* scrolling keys */
 			if (keysym == XK_Page_Down) {
@@ -469,22 +435,20 @@ int main(int argc, char *argv[]) {
 				if (scroll_y < 0) scroll_y = 0;
 			}
 			else if (n > 0 && isprint((unsigned char)buf[0]) && cx < MAX_COLS -1) {
-				lines[cy][cx++] = buf[0];
-				lines[cy][cx] = '\0';
+				int len = strlen(lines[cy]);
+				if (len < MAX_COLS - 1) {
+					/* waddle the text to the right, to the right to the right to the right, not the left, not the left, not the left... */
+					memmove(&lines[cy][cx + 1], &lines[cy][cx], len - cx + 1);
+					/* insert the characters like its fortnite (I don't play fortnite) */
+					lines[cy][cx] = buf[0];
+					cx++;
+				}
+
 				/* more scrolling stuff */
 				if (scroll_y < 0) scroll_y = 0;
 			}
-			/* I'm sorry but all the else if's remind me of Yandere Simulator :skull: */
-			/* Mouse function; turned off, doesn't work
-			else if (ev.type == ButtonPress) {
-				int mx = ev.xbutton.x;
-				int my = ev.xbutton.y;
-				 move cursor from mouse clic
-				handle_click(mx, my);
-
-				redraw();
-			} */
-			
+		
+			/* I'm sorry but all the else if's remind me of Yandere Simulator :skull: */	
 			/* Redraw after every keypress. 
 			 * 
 			 * NOTE: This sounds catastropically bad on old computers.
