@@ -2,5 +2,6 @@ Updates from v0.3
 	
 	* Added cursor
 	* Added quickly deleting words (via CTRL+Backspace)
-        * Added skipping words (via CTRL and left or right arrows)
-        * Added support for the delete key
+    * Added skipping words (via CTRL and left or right arrows)
+    * Added support for the delete key
+	* Added support for the Tab key (Tab=makes 5 spaces)
