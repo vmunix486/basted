@@ -1,7 +1,8 @@
-Updates from v0.3
-	
-	* Added cursor
-	* Added quickly deleting words (via CTRL+Backspace)
-    * Added skipping words (via CTRL and left or right arrows)
-    * Added support for the delete key
-	* Added support for the Tab key (Tab=makes 5 spaces)
+Updates from v0.4
+     
+     * Removed unused, commented-out code that has no use
+     * Fixed bug retaining to Backspace or Delete removing the entire right side of the line
+     * Fixed bug retaining to Tabs inserted via other programs being rendered as a little R over L
+     * Written in basted
+     * Added support for Home and End keys
+
