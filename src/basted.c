@@ -45,11 +45,7 @@ void redraw() {
 
 	/* Part that calculates the max amount of characters per line */
 	int max_cols;
-	/* cursor stuff */
-	int cursor_px = 10;
-	int cursor_py = 20;
-	int found_cursor = 0;
-
+	
 	if (char_width <= 0) {
 		max_cols = 80; /* Just as a fallback if it explodes */
 	} else {
@@ -61,11 +57,16 @@ void redraw() {
 	/* if (max_cols < 1) max_cols = 1; */
 
 	/* Debugging shart */
-	printf("win_width= %d char_width= %d\n max_cols= %d\n",
-		win_width, char_width, (win_width - 20) / char_width);
+	/* printf("win_width= %d char_width= %d\n max_cols= %d\n",
+		win_width, char_width, (win_width - 20) / char_width); */
 
 
 	int y = 20 - scroll_y;
+
+	/* cursor stuff */
+	int cursor_px = 10;
+	int cursor_py = 20;
+	int found_cursor = 0;
 
 	/* Draw the alphanumeric characters */
 	for (int i = 0; i < line_count; i++) {
@@ -80,6 +81,17 @@ void redraw() {
 			int end = start + max_cols;
 
 			if (end >= len) {
+				int segment_len = len - start;
+				/* cursor stuff */
+				if (!found_cursor && i == cy) {
+					if (cx >= start && cx <= len) {
+						int rel = cx - start;
+						cursor_px = 10 + rel * char_width;
+						cursor_py = y;
+						found_cursor = 1;
+					}
+				}
+
 				XDrawString(dpy, win, gc, 10, y,
 						line + start,
 						len - start);
@@ -98,6 +110,16 @@ void redraw() {
 			    wrap = end;
 			}
 			
+			/* cursor stuff */
+			if (!found_cursor && i == cy) {
+				if (cx >= start && cx <= len) {
+					int rel = cx - start;
+					cursor_px = 10 + rel * char_width;
+					cursor_py = y;
+					found_cursor = 1;
+				}
+			}
+			
 			/* Draw segment */
 			XDrawString(dpy, win, gc, 10, y,
 					line + start,
@@ -113,6 +135,12 @@ void redraw() {
 
 		y += line_height;
 	}
+	/* Draw the cursor */
+	XDrawLine(dpy, win, gc,
+			cursor_px,
+			cursor_py - font->ascent,
+			cursor_px,
+			cursor_py + font->descent);
 
 }
 
@@ -193,6 +221,46 @@ void save_file() {
 	fclose(f);
 }
 
+/* mouse click cursor move thing part 
+ * EXPERIMENTAL 
+void handle_click(int mx, int my) {
+	int y = 20 - scroll_y;
+	for (int i = 0; i < line_count; i++) {
+		char *line = lines[i];
+		int len = strlen(line);
+		int start = 0;
+		while (start < len) {
+			int end = start + max_cols;
+			int segment_len;
+				if (end >= len) {
+					segment_len = len - start;
+				} else {
+					int wrap = end - 1;
+					while (wrap > start && line[wrap] != ' ')
+						wrap--;
+					if (wrap == start)
+						wrap = end;
+					segment_len = wrap - start;
+				}
+			 Check if the click is on a visual line, turned off, mouse does not work
+			if (my >= y - line_height && my <= y) {
+				int rel_x = (mx - 10) / char_width;
+				if (rel_x < 0) rel_x = 0;
+				if (rel_x > segment_len) rel_x = segment_len;
+				cx = start + rel_x;
+				cy = i;
+				return;
+			}
+			start += segment_len;
+			 skip the space after a long wrap
+			if (line[start] == ' ') start++;
+			y += line_height;
+		}
+		y += line_height;
+	} 
+} 
+*/
+
 /* ACTUAL PROGRAM HOLY <bleep> */
 int main(int argc, char *argv[]) {
 	if (argc > 1) {
@@ -226,16 +294,16 @@ int main(int argc, char *argv[]) {
 	/* set the title of the window */
 
 	/* static title bar name */
-	/* XStoreName(dpy, win, "basted 0.3"); */
+	/* XStoreName(dpy, win, "basted"); */
 
 	/* dynamic title bar name */
 	void update_title() {
 		char title[512];
 
 		if (current_file[0] != '\0') {
-			snprintf(title, sizeof(title), "basted 0.3 - %s", current_file);
+			snprintf(title, sizeof(title), "basted 0.4 - %s", current_file);
 		} else {
-			snprintf(title, sizeof(title), "basted 0.3 - [I have no name and I must scream]");
+			snprintf(title, sizeof(title), "basted 0.4 - I have no name and I must scream");
 		}
 
 		XStoreName(dpy, win, title);
@@ -243,7 +311,7 @@ int main(int argc, char *argv[]) {
 
 	/* Select the events, or also known as inputs, or also known as 
 	 * k e y p r e s s */
-	XSelectInput(dpy, win, ExposureMask | KeyPressMask | StructureNotifyMask);
+	XSelectInput(dpy, win, ExposureMask | KeyPressMask | StructureNotifyMask | ButtonPressMask);
 
 	/* Show the window so you can see it, and the note before is actually wrong but it's 10PM EST and I'm tired and lazy so I don't feel like changing it */
 	XMapWindow(dpy, win);
@@ -310,11 +378,40 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 			else if (keysym == XK_BackSpace) {
-				if (cx > 0) {
-					cx--;
+				if (ev.xkey.state & ControlMask) {
+					while (cx > 0 && lines[cy][cx - 1] == ' ')
+						cx--;
+					while (cx > 0 && lines[cy][cx - 1] != ' ')
+						cx--;
 					lines[cy][cx] = '\0';
 				}
+				else {
+					if (cx > 0) {
+						cx--;
+						lines[cy][cx] = '\0';
+					}
+				}
 			}
+			else if (keysym == XK_Delete) {
+
+				int len = strlen(lines[cy]);
+
+				if (cx < len) {
+					memmove(&lines[cy][cx],
+							&lines[cy][cx + 1],
+							len - cx);
+				}
+			}
+
+			else if (keysym == XK_Tab) {
+				int spaces = 5;
+				for (int i = 0; i < spaces && cx < MAX_COLS - 1; i++) {
+					lines[cy][cx++] = ' ';
+				}
+
+				lines[cy][cx] = '\0';
+			}
+
 			else if (keysym == XK_Return) {
 				if (cy + 1 < MAX_LINES) {
 					cy++;
@@ -322,16 +419,47 @@ int main(int argc, char *argv[]) {
 					line_count++;
 				}
 			}
-			else if (keysym == XK_Left && cx > 0) {
-				cx--;
+			else if (keysym == XK_Left) {
+				
+				if (ev.xkey.state & ControlMask) {
+					while (cx > 0 && lines[cy][cx - 1] == ' ')
+						cx--;
+
+					while (cx > 0 && lines[cy][cx - 1] != ' ')
+						cx--;
+				} else {
+					if (cx > 0) cx--;
+				}
 			}
-			else if (keysym == XK_Right && cx < strlen(lines[cy])) {
-				cx++;
+			else if (keysym == XK_Right) {
+				
+				int len = strlen(lines[cy]);
+
+				if (ev.xkey.state & ControlMask) {
+					while (cx < len && lines[cy][cx] == ' ')
+						cx++;
+
+					while (cx < len && lines[cy][cx] != ' ')
+						cx++;
+				} else {
+					if (cx < len) cx++;
+				}
 			}
+			
 			else if (keysym == XK_Down && cy < line_count - 1) {
 				cy++;
-			
 			}
+			else if (keysym == XK_Up && cy < line_count + 1) {
+				cy --;
+			}
+			else if (keysym == XK_BackSpace) {
+				if (cx > 0) {
+					cx--;
+					lines[cy][cx] = '\0';
+				}
+			}
+			
+			
 			/* scrolling keys */
 			if (keysym == XK_Page_Down) {
 				scroll_y += line_height * 5;
@@ -347,10 +475,20 @@ int main(int argc, char *argv[]) {
 				if (scroll_y < 0) scroll_y = 0;
 			}
 			/* I'm sorry but all the else if's remind me of Yandere Simulator :skull: */
+			/* Mouse function; turned off, doesn't work
+			else if (ev.type == ButtonPress) {
+				int mx = ev.xbutton.x;
+				int my = ev.xbutton.y;
+				 move cursor from mouse clic
+				handle_click(mx, my);
+
+				redraw();
+			} */
 			
 			/* Redraw after every keypress. 
 			 * 
-			 * NOTE: This sounds catastropically bad on old computers.*/
+			 * NOTE: This sounds catastropically bad on old computers.
+			 * Update 4.6.26: It is. I can see it waiting to refresh on my Pentium III 1Ghz*/
 			redraw();
 		}
 	}
