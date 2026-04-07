@@ -1,4 +1,6 @@
-Updates from v0.2:
+Updates from v0.3
 	
-	* Added word wrapping
-	* Added scrolling via Page Up and Page Down
+	* Added cursor
+	* Added quickly deleting words (via CTRL+Backspace)
+        * Added skipping words (via CTRL and left or right arrows)
+        * Added support for the delete key
