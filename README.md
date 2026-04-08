@@ -20,6 +20,6 @@ There are many ways to compile BASTED. The first and easiest way is with the ``m
 
 If you do not have GNU make, you can also do a manual compilation. Just run
 
-``cc src/basted.c -lX11 -std=c99 -o basted``
+``gcc src/basted.c -lX11 -std=c99 -o basted``
 
 If you want to add any options, I recommend adding them between ``-lX11`` and ``-o basted``.
